@@ -1,0 +1,41 @@
+services:
+  mariadb:
+    image: mariadb:latest
+    environment:
+      MYSQL_DATABASE: '${DB_NAME}'
+      MYSQL_USER: '${DB_USERNAME}'
+      MYSQL_PASSWORD: '${DB_PASSWORD}'
+      MYSQL_ROOT_PASSWORD: '${DB_ROOT_PASSWORD}'
+    ports:
+      - 3306:3306
+    volumes:
+      - ./sql/:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    depends_on:
+      - mariadb
+    ports:
+      - 8080:80
+    environment:
+      PMA_HOST: '${DB_HOST}'
+      PMA_USER: 'root'
+      PMA_PASSWORD: '${DB_ROOT_PASSWORD}'
+  
+  app:
+    image: node:24-alpine
+    working_dir: /app
+    volumes:
+      - ./:/app
+    ports:
+        - 3000:3000
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    command: [ "npm", "run", "start" ]
